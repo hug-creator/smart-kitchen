@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能餐厅 · 多智能体协作系统</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="app">
+  <!-- 左侧导航 -->
+  <aside class="sidebar">
+    <div class="logo">🍳 智能餐厅</div>
+    <ul class="menu">
+      <li class="active" data-tab="order">📝 实时下单</li>
+      <li data-tab="inventory">📦 库存管理</li>
+      <li data-tab="history">📋 订单历史</li>
+      <li data-tab="monitor">📊 系统监控</li>
+    </ul>
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <span class="dot online"></span> 系统在线
+      </div>
+    </div>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="main">
+    <header class="topbar">
+      <h2 id="page-title">实时下单</h2>
+      <div class="topbar-actions">
+        <span class="user-info">👤 餐厅管理员</span>
+      </div>
+    </header>
+
+    <!-- 实时下单 Tab -->
+    <section id="tab-order" class="tab-content active">
+      <div class="alert-info">
+        <strong>💡 提示：</strong>用自然语言点餐，比如"来碗热乎的番茄炒蛋"、"两份煎牛排"或"刚才那个蛋炒饭再来一份"
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span>🍽 客人点餐</span>
+          <span class="card-tag">Step 1</span>
+        </div>
+        <div class="order-input-row">
+          <input type="text" id="order-input" placeholder="客人说：来一份番茄炒蛋" autocomplete="off">
+          <button class="btn btn-primary" id="order-btn">下单</button>
+        </div>
+        <div class="examples">
+          <span class="example-label">试试：</span>
+          <span class="example-chip" data-q="来一份番茄炒蛋">番茄炒蛋</span>
+          <span class="example-chip" data-q="来点热乎的蛋炒饭">热乎的蛋炒饭</span>
+          <span class="example-chip" data-q="两份煎牛排">两份煎牛排</span>
+          <span class="example-chip" data-q="蔬菜沙拉">蔬菜沙拉</span>
+        </div>
+      </div>
+
+      <div class="card" id="result-card" style="display:none;">
+        <div class="card-header">
+          <span id="result-title">处理结果</span>
+          <span class="card-tag" id="result-status">处理中</span>
+        </div>
+
+        <!-- 流程时间轴 -->
+        <div class="timeline" id="timeline"></div>
+
+        <!-- Agent 结果卡片 -->
+        <div class="agent-grid" id="agent-grid"></div>
+
+        <!-- 统计信息 -->
+        <div class="stats-row" id="stats-row"></div>
+      </div>
+    </section>
+
+    <!-- 库存管理 Tab -->
+    <section id="tab-inventory" class="tab-content">
+      <div class="toolbar">
+        <h2 id="inventory-title">📦 库存管理</h2>
+        <button class="btn btn-default" id="refresh-inventory">🔄 刷新</button>
+      </div>
+      <div class="card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>食材名称</th>
+              <th>当前库存</th>
+              <th>状态</th>
+              <th>预警阈值</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 订单历史 Tab -->
+    <section id="tab-history" class="tab-content">
+      <div class="toolbar">
+        <h2>📋 订单历史</h2>
+        <button class="btn btn-default" id="refresh-history">🔄 刷新</button>
+      </div>
+      <div class="card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>订单 ID</th>
+              <th>原始输入</th>
+              <th>菜品</th>
+              <th>份数</th>
+              <th>质检分</th>
+              <th>反馈</th>
+              <th>状态</th>
+              <th>时间</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 系统监控 Tab -->
+    <section id="tab-monitor" class="tab-content">
+      <div class="toolbar">
+        <h2>📊 系统监控</h2>
+        <button class="btn btn-default" id="refresh-monitor">🔄 刷新</button>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-icon">📝</div>
+          <div class="metric-value" id="stat-total">0</div>
+          <div class="metric-label">总订单数</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">✅</div>
+          <div class="metric-value" id="stat-success">0</div>
+          <div class="metric-label">成功订单</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">📈</div>
+          <div class="metric-value" id="stat-rate">0%</div>
+          <div class="metric-label">成功率</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">⭐</div>
+          <div class="metric-value" id="stat-score">0</div>
+          <div class="metric-label">平均质检分</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span>🤖 4 Agent 协作链路</span>
+          <span class="card-tag">架构总览</span>
+        </div>
+        <div class="agent-flow">
+          <div class="agent-block">接单<br/><small>LLM 解析</small></div>
+          <div class="arrow">→</div>
+          <div class="agent-block">库存<br/><small>SQLite</small></div>
+          <div class="arrow">→</div>
+          <div class="agent-block">烹饪<br/><small>模拟</small></div>
+          <div class="arrow">→</div>
+          <div class="agent-block">质检<br/><small>LLM 评分</small></div>
+          <div class="arrow">→</div>
+          <div class="agent-block">上菜</div>
+        </div>
+        <div class="info-grid">
+          <div class="info-block">
+            <div class="info-label">条件边</div>
+            <div class="info-value">库存充足 / 质检 ≥ 6分</div>
+          </div>
+          <div class="info-block">
+            <div class="info-label">回路</div>
+            <div class="info-value">质检不通过 → 退回烹饪</div>
+          </div>
+          <div class="info-block">
+            <div class="info-label">降级</div>
+            <div class="info-value">连续 2 次失败 → 回滚库存</div>
+          </div>
+          <div class="info-block">
+            <div class="info-label">持久化</div>
+            <div class="info-value">SQLite 真实扣减/回滚</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

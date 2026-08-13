@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能餐厅 - 系统运行全流程图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei","PingFang SC",sans-serif;
+    background: #f5f6fa;
+    padding: 40px;
+  }
+  .container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.08);
+    padding: 40px;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+  h1 { text-align: center; font-size: 24px; color: #303133; margin-bottom: 8px; }
+  .subtitle { text-align: center; color: #909399; font-size: 14px; margin-bottom: 32px; }
+
+  .flow { display: flex; flex-direction: column; align-items: center; }
+
+  /* 节点 */
+  .node {
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+    min-width: 220px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    position: relative;
+  }
+  .node .node-sub { display: block; font-size: 11px; font-weight: 400; opacity: 0.9; margin-top: 4px; }
+  .node-start { background: #909399; }
+  .node-order { background: #409eff; }
+  .node-inventory { background: #67c23a; }
+  .node-cook { background: #e6a23c; }
+  .node-qc { background: #f56c6c; }
+  .node-serve { background: #67c23a; }
+  .node-fallback { background: #909399; }
+  .node-end { background: #303133; }
+
+  /* 判断菱形 */
+  .diamond {
+    width: 190px;
+    height: 90px;
+    background: #fdf6ec;
+    border: 2px solid #e6a23c;
+    color: #e6a23c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    transform: rotate(0);
+    position: relative;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    padding: 20px;
+  }
+  .diamond.red {
+    background: #fef0f0;
+    border-color: #f56c6c;
+    color: #f56c6c;
+  }
+
+  /* 箭头（垂直） */
+  .arrow-v {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0;
+    color: #909399;
+    font-size: 12px;
+  }
+  .arrow-v .line { width: 2px; height: 22px; background: #c0c4cc; }
+  .arrow-v .head {
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #c0c4cc;
+  }
+  .arrow-v .label {
+    position: relative;
+    background: #fff;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  /* 分支布局 */
+  .branch-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 60px;
+    width: 100%;
+    position: relative;
+  }
+  .branch-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .branch-label {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 12px;
+  }
+  .branch-yes { background: #f0f9eb; color: #67c23a; }
+  .branch-no { background: #fef0f0; color: #f56c6c; }
+
+  /* 回路标注 */
+  .loop-badge {
+    display: inline-block;
+    background: #fdf6ec;
+    color: #e6a23c;
+    border: 1px dashed #e6a23c;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* 图例 */
+  .legend {
+    margin-top: 32px;
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    border-top: 1px solid #ebeef5;
+    padding-top: 20px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #606266;
+  }
+  .legend-box { width: 14px; height: 14px; border-radius: 3px; }
+
+  .key-points {
+    margin-top: 24px;
+    background: #fafbfc;
+    border: 1px solid #ebeef5;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: #606266;
+    line-height: 1.9;
+  }
+  .key-points b { color: #409eff; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🍳 智能餐厅 · 系统运行全流程图</h1>
+  <p class="subtitle">端到端：客人点餐 → 4 Agent 协作 → 上菜 / 降级（含条件分支 + 回路）</p>
+
+  <div class="flow">
+
+    <!-- 起点 -->
+    <div class="node node-start">🚀 START<div class="node-sub">客人说："来一份番茄炒蛋"</div></div>
+
+    <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+
+    <!-- 接单 -->
+    <div class="node node-order">📝 接单 Agent<div class="node-sub">LLM 语义解析菜品 + 份数</div></div>
+
+    <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+
+    <!-- 判断1：识别菜品？ -->
+    <div class="diamond">识别出菜品？</div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label branch-no">❌ 未识别</span>
+        <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+        <div class="node node-end">🏁 END<div class="node-sub">提示客人重说</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label branch-yes">✅ 识别成功</span>
+        <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+        <div class="node node-inventory">📦 库存 Agent<div class="node-sub">SQLite 查询 + 事务扣减</div></div>
+
+        <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+        <div class="diamond">库存充足？</div>
+
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label branch-no">❌ 缺货</span>
+            <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+            <div class="node node-end">🏁 END<div class="node-sub">通知客人缺货</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label branch-yes">✅ 充足</span>
+            <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+            <div class="node node-cook">🍳 烹饪 Agent<div class="node-sub">模拟烹饪（真实项目对接设备）</div></div>
+
+            <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+            <div class="node node-qc">🔍 质检 Agent<div class="node-sub">LLM 评分 1-10</div></div>
+
+            <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+            <div class="diamond red">评分 ≥ 6？</div>
+
+            <div class="branch-row">
+              <div class="branch-col">
+                <span class="branch-label branch-yes">✅ 通过</span>
+                <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+                <div class="node node-serve">🍽 上菜<div class="node-sub">订单完成，保存记录</div></div>
+                <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+                <div class="node node-end">🏁 END</div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label branch-no">❌ 不通过</span>
+                <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+                <div class="diamond">重做 &lt; 2 次？</div>
+                <div class="branch-row">
+                  <div class="branch-col">
+                    <span class="branch-label branch-yes">✅ 是</span>
+                    <div class="loop-badge">🔄 回路 → 退回烹饪</div>
+                  </div>
+                  <div class="branch-col">
+                    <span class="branch-label branch-no">❌ 否（已2次）</span>
+                    <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+                    <div class="node node-fallback">⚠️ 降级<div class="node-sub">回滚库存 + 友好提示</div></div>
+                    <div class="arrow-v"><div class="line"></div><div class="head"></div></div>
+                    <div class="node node-end">🏁 END</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 图例 -->
+  <div class="legend">
+    <div class="legend-item"><span class="legend-box" style="background:#409eff;"></span> LLM 智能节点</div>
+    <div class="legend-item"><span class="legend-box" style="background:#67c23a;"></span> 数据库/上菜</div>
+    <div class="legend-item"><span class="legend-box" style="background:#e6a23c;"></span> 模拟节点</div>
+    <div class="legend-item"><span class="legend-box" style="background:#f56c6c;"></span> 质检节点</div>
+    <div class="legend-item"><span class="legend-box" style="background:#303133;"></span> 起止点</div>
+  </div>
+
+  <!-- 关键点 -->
+  <div class="key-points">
+    <b>关键设计：</b><br>
+    ① <b>3 个条件分支</b>：识别菜品？ / 库存充足？ / 评分≥6？<br>
+    ② <b>1 条回路</b>：质检不通过 → 退回烹饪重做（最多 2 次）<br>
+    ③ <b>1 个降级出口</b>：连续 2 次失败 → 回滚库存 + 友好提示，不让系统崩溃<br>
+    ④ <b>3 个 END</b>：未识别 / 缺货 / 正常完成——每条路径都能到达终点
+  </div>
+
+</div>
+</body>
+</html>

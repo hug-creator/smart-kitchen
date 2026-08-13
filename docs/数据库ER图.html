@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能餐厅 - 数据库 ER 图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei","PingFang SC",sans-serif;
+    background: #f5f6fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px;
+  }
+  .container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.08);
+    padding: 40px;
+    max-width: 1100px;
+    width: 100%;
+  }
+  h1 { text-align: center; font-size: 24px; color: #303133; margin-bottom: 8px; }
+  .subtitle { text-align: center; color: #909399; font-size: 14px; margin-bottom: 32px; }
+
+  .er-diagram { position: relative; padding: 20px 0; }
+  .tables-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0;
+    position: relative;
+  }
+
+  .table-box {
+    border: 2px solid #409eff;
+    border-radius: 10px;
+    overflow: hidden;
+    width: 340px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(64,158,255,.1);
+  }
+  .table-header {
+    background: #409eff;
+    color: white;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .table-header .pk-badge {
+    background: #ffd04b;
+    color: #333;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .table-body { padding: 4px 0; }
+  .col-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .col-row:last-child { border-bottom: none; }
+  .col-name { font-weight: 600; color: #303133; min-width: 100px; }
+  .col-type { color: #909399; font-family: "Cascadia Code",Consolas,monospace; font-size: 12px; min-width: 100px; text-align: center; }
+  .col-tags { display: flex; gap: 4px; flex-wrap: wrap; max-width: 100px; justify-content: flex-end; }
+
+  .tag {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tag-pk { background: #fff3cd; color: #856404; }
+  .tag-nn { background: #f3e5f5; color: #7b1fa2; }
+  .tag-ai { background: #e3f2fd; color: #1565c0; }
+  .tag-auto { background: #e8f5e9; color: #2e7d32; }
+
+  /* 关系连线 */
+  .relation-line {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+  .line-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .line-bar {
+    width: 70px;
+    height: 3px;
+    background: #409eff;
+    position: relative;
+  }
+  .line-bar::before, .line-bar::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    border: 5px solid transparent;
+  }
+  .line-bar::before {
+    left: -2px;
+    border-right-color: #409eff;
+    border-right-width: 8px;
+  }
+  .line-bar::after {
+    right: -2px;
+    border-left-color: #409eff;
+    border-left-width: 8px;
+  }
+  .cardinality {
+    font-size: 12px;
+    font-weight: 700;
+    color: #409eff;
+    background: #ecf5ff;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .rel-label {
+    font-size: 10px;
+    color: #909399;
+    white-space: nowrap;
+  }
+
+  .legend {
+    margin-top: 32px;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #606266;
+  }
+
+  .notes {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 16px;
+  }
+  .note-card {
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 13px;
+  }
+  .note-card h4 { color: #409eff; margin-bottom: 6px; font-size: 14px; }
+  .note-card p { color: #606266; line-height: 1.6; }
+
+  @media (max-width: 1000px) {
+    .tables-row { flex-wrap: wrap; justify-content: center; gap: 20px; }
+    .relation-line { display: none; }
+    .notes { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🍳 智能餐厅 · 数据库 ER 图</h1>
+  <p class="subtitle">inventory（库存表）—— 应用层关联 —— orders（订单表）</p>
+
+  <div class="er-diagram">
+    <div class="tables-row">
+
+      <!-- ========== inventory 表 ========== -->
+      <div class="table-box" style="border-color:#67c23a;">
+        <div class="table-header" style="background:#67c23a;">
+          <span>📦 inventory</span>
+          <span class="pk-badge">库存表</span>
+        </div>
+        <div class="table-body">
+          <div class="col-row">
+            <span class="col-name">item</span>
+            <span class="col-type">TEXT</span>
+            <span class="col-tags"><span class="tag tag-pk">PK</span></span>
+          </div>
+          <div class="col-row">
+            <span class="col-name">quantity</span>
+            <span class="col-type">REAL</span>
+            <span class="col-tags"><span class="tag tag-nn">NOT NULL</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 关系连线 -->
+      <div class="relation-line">
+        <div class="line-content">
+          <span class="cardinality">N</span>
+          <div class="line-bar"></div>
+          <span class="cardinality">N</span>
+          <span class="rel-label">菜品-食材映射(MENU)</span>
+        </div>
+      </div>
+
+      <!-- ========== orders 表 ========== -->
+      <div class="table-box" style="border-color:#e6a23c;">
+        <div class="table-header" style="background:#e6a23c;">
+          <span>🧾 orders</span>
+          <span class="pk-badge">订单表</span>
+        </div>
+        <div class="table-body">
+          <div class="col-row">
+            <span class="col-name">id</span>
+            <span class="col-type">INTEGER</span>
+            <span class="col-tags"><span class="tag tag-pk">PK</span><span class="tag tag-auto">AUTO</span></span>
+          </div>
+          <div class="col-row">
+            <span class="col-name">user_input</span>
+            <span class="col-type">TEXT</span>
+            <span class="col-tags"><span class="tag tag-nn">NOT NULL</span></span>
+          </div>
+          <div class="col-row">
+            <span class="col-name">dish</span>
+            <span class="col-type">TEXT</span>
+            <span class="col-tags"><span class="tag tag-nn">NOT NULL</span><span class="tag tag-ai">AI解析</span></span>
+          </div>
+          <div class="col-row">
+            <span class="col-name">quantity</span>
+            <span class="col-type">INTEGER</span>
+            <span class="col-tags"><span class="tag tag-nn">NOT NULL</span></span>
+          </div>
+          <div class="col-row">
+            <span class="col-name">qc_score</span>
+            <span class="col-type">INTEGER</span>
+            <span class="col-tags"><span class="tag tag-ai">AI评分</span></span>
+          </div>
+          <div class="col-row">
+            <span class="col-name">qc_feedback</span>
+            <span class="col-type">TEXT</span>
+            <span class="col-tags"></span>
+          </div>
+          <div class="col-row">
+            <span class="col-name">status</span>
+            <span class="col-type">TEXT</span>
+            <span class="col-tags"><span class="tag tag-nn">NOT NULL</span></span>
+          </div>
+          <div class="col-row">
+            <span class="col-name">created_at</span>
+            <span class="col-type">DATETIME</span>
+            <span class="col-tags"><span class="tag tag-auto">默认当前</span></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 图例 -->
+  <div class="legend">
+    <div class="legend-item"><span class="tag tag-pk">PK</span> 主键</div>
+    <div class="legend-item"><span class="tag tag-nn">NOT NULL</span> 非空</div>
+    <div class="legend-item"><span class="tag tag-ai">AI</span> LLM 生成</div>
+    <div class="legend-item"><span class="tag tag-auto">AUTO</span> 自动生成</div>
+  </div>
+
+  <!-- 关联说明 -->
+  <div class="notes">
+    <div class="note-card">
+      <h4>🔗 inventory ↔ orders</h4>
+      <p><b>关系</b>：应用层关联（非外键）<br><b>机制</b>：通过 <code>MENU</code> 字典建立「菜品→食材」映射<br><b>示例</b>：番茄炒蛋 → 鸡蛋×2 + 番茄×2</p>
+    </div>
+    <div class="note-card">
+      <h4>🛡️ 为什么不用外键？</h4>
+      <p><b>原因</b>：菜品与食材是多对多关系<br><b>设计</b>：用 Python 字典 <code>MENU</code> 而非中间表<br><b>好处</b>：改菜单只需改代码，不改表结构</p>
+    </div>
+    <div class="note-card">
+      <h4>🔒 库存一致性</h4>
+      <p><b>扣减</b>：下单时事务扣减<br><b>回滚</b>：质检失败/降级时恢复<br><b>保证</b>：SQLite 事务，出错自动 rollback</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

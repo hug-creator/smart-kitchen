@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能餐厅 - Agent 协作泳道图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei","PingFang SC",sans-serif;
+    background: #f5f6fa;
+    padding: 40px;
+  }
+  .container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.08);
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 { text-align: center; font-size: 24px; color: #303133; margin-bottom: 8px; }
+  .subtitle { text-align: center; color: #909399; font-size: 14px; margin-bottom: 32px; }
+
+  .swimlane-wrapper {
+    border: 1px solid #dcdfe6;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* 泳道头 */
+  .swimlane-header {
+    display: flex;
+    background: #f5f7fa;
+    border-bottom: 1px solid #dcdfe6;
+  }
+  .lane-title {
+    padding: 14px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: #303133;
+    border-right: 1px solid #dcdfe6;
+  }
+  .lane-title:last-child { border-right: none; }
+  .lane-title .sub { display: block; font-size: 11px; color: #909399; font-weight: 400; margin-top: 3px; }
+
+  /* 泳道主体 */
+  .swimlane-body { display: flex; }
+  .lane {
+    padding: 16px 12px;
+    border-right: 1px solid #dcdfe6;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 380px;
+  }
+  .lane:last-child { border-right: none; }
+  .lane-order { width: 18%; background: #f0f9ff; }
+  .lane-inventory { width: 20%; background: #f0f9eb; }
+  .lane-cook { width: 20%; background: #fff9e6; }
+  .lane-qc { width: 22%; background: #fdf3f3; }
+  .lane-fallback { width: 20%; background: #f4f4f5; }
+
+  /* 泳道内卡片 */
+  .entity-card {
+    background: #fff;
+    border: 1.5px solid #dcdfe6;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .entity-header {
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .entity-header.order { background: #409eff; }
+  .entity-header.inventory { background: #67c23a; }
+  .entity-header.cook { background: #e6a23c; }
+  .entity-header.qc { background: #f56c6c; }
+  .entity-header.fallback { background: #909399; }
+  .entity-body { padding: 10px 12px; font-size: 12px; color: #606266; line-height: 1.7; }
+  .entity-body .step { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 4px; }
+  .entity-body .step-num {
+    background: #ecf5ff; color: #409eff;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+  }
+  .tech-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 4px;
+    font-weight: 600;
+  }
+  .tech-llm { background: #e3f2fd; color: #1565c0; }
+  .tech-db { background: #e8f5e9; color: #2e7d32; }
+  .tech-sim { background: #fff3cd; color: #856404; }
+
+  .flow-note {
+    text-align: center;
+    font-size: 12px;
+    color: #909399;
+    padding: 4px 0;
+    font-style: italic;
+  }
+
+  /* 图例 */
+  .legend {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #606266;
+  }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-llm { background: #409eff; }
+  .dot-db { background: #67c23a; }
+  .dot-sim { background: #e6a23c; }
+
+  @media (max-width: 900px) {
+    .swimlane-body { flex-direction: column; }
+    .lane { width: 100% !important; border-right: none; border-bottom: 1px dashed #dcdfe6; min-height: auto; }
+    .lane:last-child { border-bottom: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🍳 智能餐厅 · Agent 协作泳道图</h1>
+  <p class="subtitle">5 个 Agent 各占一泳道，展示从客人点餐到上菜的完整职责分工</p>
+
+  <div class="swimlane-wrapper">
+    <!-- 泳道头 -->
+    <div class="swimlane-header">
+      <div class="lane-title" style="width:18%">📝 接单 Agent<span class="sub">LLM 语义解析</span></div>
+      <div class="lane-title" style="width:20%">📦 库存 Agent<span class="sub">SQLite 持久化</span></div>
+      <div class="lane-title" style="width:20%">🍳 烹饪 Agent<span class="sub">模拟物理过程</span></div>
+      <div class="lane-title" style="width:22%">🔍 质检 Agent<span class="sub">LLM 评分</span></div>
+      <div class="lane-title" style="width:20%">⚠️ 降级/上菜<span class="sub">兜底策略</span></div>
+    </div>
+
+    <!-- 泳道主体 -->
+    <div class="swimlane-body">
+
+      <!-- 接单 -->
+      <div class="lane lane-order">
+        <div class="entity-card">
+          <div class="entity-header order">📝 accept_order</div>
+          <div class="entity-body">
+            <div class="step"><span class="step-num">1</span><span>接收客人自然语言输入</span></div>
+            <div class="step"><span class="step-num">2</span><span>LLM 解析菜品 + 份数<span class="tech-tag tech-llm">LLM</span></span></div>
+            <div class="step"><span class="step-num">3</span><span>输出结构化 JSON<br><code>{"dish","quantity"}</code></span></div>
+          </div>
+        </div>
+        <div class="flow-note">↓ 解析失败 → 直接结束</div>
+      </div>
+
+      <!-- 库存 -->
+      <div class="lane lane-inventory">
+        <div class="entity-card">
+          <div class="entity-header inventory">📦 check_inventory</div>
+          <div class="entity-body">
+            <div class="step"><span class="step-num">1</span><span>按 MENU 查所需食材<span class="tech-tag tech-db">DB</span></span></div>
+            <div class="step"><span class="step-num">2</span><span>对比库存是否充足</span></div>
+            <div class="step"><span class="step-num">3</span><span>事务扣减库存<span class="tech-tag tech-db">DB</span></span></div>
+          </div>
+        </div>
+        <div class="flow-note">↓ 缺货 → 通知客人</div>
+      </div>
+
+      <!-- 烹饪 -->
+      <div class="lane lane-cook">
+        <div class="entity-card">
+          <div class="entity-header cook">🍳 cook</div>
+          <div class="entity-body">
+            <div class="step"><span class="step-num">1</span><span>执行烹饪流程<span class="tech-tag tech-sim">模拟</span></span></div>
+            <div class="step"><span class="step-num">2</span><span>模拟耗时 0.5-1.5s</span></div>
+            <div class="step"><span class="step-num">3</span><span>产出烹饪结果</span></div>
+          </div>
+        </div>
+        <div class="flow-note">↓ 完成 → 质检</div>
+      </div>
+
+      <!-- 质检 -->
+      <div class="lane lane-qc">
+        <div class="entity-card">
+          <div class="entity-header qc">🔍 quality_check</div>
+          <div class="entity-body">
+            <div class="step"><span class="step-num">1</span><span>LLM 打分 1-10<span class="tech-tag tech-llm">LLM</span></span></div>
+            <div class="step"><span class="step-num">2</span><span>≥6 分 → 通过</span></div>
+            <div class="step"><span class="step-num">3</span><span>&lt;6 分 → 退回烹饪<span style="color:#e6a23c;">（回路）</span></span></div>
+            <div class="step"><span class="step-num">4</span><span>连续 2 次 → 降级</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 降级/上菜 -->
+      <div class="lane lane-fallback">
+        <div class="entity-card">
+          <div class="entity-header fallback">⚠️ fallback / serve</div>
+          <div class="entity-body">
+            <div class="step"><span class="step-num">1</span><span>通过 → 上菜 🍽</span></div>
+            <div class="step"><span class="step-num">2</span><span>降级 → 回滚库存<span class="tech-tag tech-db">DB</span></span></div>
+            <div class="step"><span class="step-num">3</span><span>友好提示客人</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 图例 -->
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot dot-llm"></span> LLM 智能节点</div>
+    <div class="legend-item"><span class="legend-dot dot-db"></span> SQLite 持久化</div>
+    <div class="legend-item"><span class="legend-dot dot-sim"></span> 模拟节点</div>
+  </div>
+
+</div>
+</body>
+</html>
