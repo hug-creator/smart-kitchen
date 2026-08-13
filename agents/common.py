@@ -43,6 +43,7 @@ class KitchenState(TypedDict):
     - qc_pass: 质检是否通过
     - qc_retries: 已重做次数
     - fallback: 是否触发降级
+    - recommendation: 缺货时 LLM 推荐的替代菜品
     - log: 全链路日志
     - timestamps: 各 Agent 耗时(ms)
     """
@@ -56,6 +57,7 @@ class KitchenState(TypedDict):
     qc_pass: bool
     qc_retries: int
     fallback: bool
+    recommendation: str
     log: list
     timestamps: dict
 
@@ -65,3 +67,22 @@ def log_step(state: KitchenState, agent: str, msg: str, t0: float) -> None:
     elapsed_ms = int((time.time() - t0) * 1000)
     state["log"].append(f"[{agent}] {msg} ({elapsed_ms}ms)")
     state["timestamps"][agent] = elapsed_ms
+
+
+def record_token(agent: str, usage) -> None:
+    """记录一次 LLM 调用的 Token 消耗（usage 为 OpenAI 的 usage 对象）。
+
+    失败静默——Token 统计是锦上添花，不能因为记录失败影响主流程。
+    """
+    if usage is None:
+        return
+    try:
+        from db import database
+        database.record_usage(
+            agent,
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+        )
+    except Exception:
+        pass

@@ -421,3 +421,17 @@ input[type="text"] { flex: 1; }
 .main::-webkit-scrollbar-track { background: #f0f2f5; }
 .main::-webkit-scrollbar-thumb { background: #c0c4cc; border-radius: 4px; }
 .main::-webkit-scrollbar-thumb:hover { background: #909399; }
+
+/* ─── 缺货推荐框 ─── */
+.recommendation-box {
+  background: #fdf6ec;
+  border: 1px solid #faecd8;
+  border-left: 3px solid #e6a23c;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #e6a23c;
+  font-weight: 500;
+}
+.recommendation-box b { color: #b88230; }

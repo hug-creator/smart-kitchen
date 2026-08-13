@@ -79,3 +79,54 @@ class TestOrders:
         assert stats["success"] == 2
         assert stats["success_rate"] == 66.7
         assert stats["avg_score"] == 7.0
+
+
+class TestRestock:
+    def test_increase_stock(self):
+        """单个食材进货 +10。"""
+        before = database.get_all_stock()["鸡蛋"]
+        database.increase_stock("鸡蛋", 10)
+        assert database.get_all_stock()["鸡蛋"] == before + 10
+
+    def test_reset_stock(self):
+        """一键补货：重置到初始值。"""
+        database.deduct_stock("番茄炒蛋", 2)  # 扣掉一些
+        database.reset_stock()
+        stock = database.get_all_stock()
+        assert stock["鸡蛋"] == 6
+        assert stock["番茄"] == 4
+
+
+class TestUsage:
+    def test_record_and_stats(self):
+        """Token 统计：记录后能查到，按 Agent 分组。"""
+        database.record_usage("接单", 100, 50, 150)
+        database.record_usage("质检", 80, 40, 120)
+        database.record_usage("接单", 60, 30, 90)
+
+        stats = database.get_usage_stats()
+        assert stats["total_calls"] == 3
+        assert stats["total_tokens"] == 360
+        by_agent = {a["agent"]: a for a in stats["by_agent"]}
+        assert by_agent["接单"]["calls"] == 2
+        assert by_agent["接单"]["tokens"] == 240
+
+
+class TestLastOrder:
+    def test_get_last_order(self):
+        """上下文指代：查最近一次成功订单。"""
+        assert database.get_last_order() is None  # 初始为空
+
+        database.save_order("a", "番茄炒蛋", 1, 8, "", "served")
+        database.save_order("b", "煎牛排", 1, 7, "", "served")
+
+        last = database.get_last_order()
+        assert last["dish"] == "煎牛排"  # 最近一次
+
+    def test_get_last_order_ignores_failed(self):
+        """只返回成功上菜的订单，忽略缺货/降级。"""
+        database.save_order("a", "番茄炒蛋", 1, 8, "", "served")
+        database.save_order("b", "煎牛排", 1, None, "", "out_of_stock")
+
+        last = database.get_last_order()
+        assert last["dish"] == "番茄炒蛋"  # 缺货单不算

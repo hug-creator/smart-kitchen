@@ -8,7 +8,7 @@
 
 import time
 
-from agents.common import KitchenState, get_client, log_step, MODEL
+from agents.common import KitchenState, get_client, log_step, record_token, MODEL
 
 QC_PROMPT = """你是餐厅质检员。刚做好的菜品是「{dish}」，请严格评分。
 
@@ -39,6 +39,7 @@ def quality_check(state: KitchenState) -> KitchenState:
             ],
             temperature=0.3,
         )
+        record_token("质检", resp.usage)
         raw = resp.choices[0].message.content.strip()
         raw = raw.removeprefix("```json").removesuffix("```").strip()
         result = json.loads(raw)

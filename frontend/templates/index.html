@@ -79,7 +79,10 @@
     <section id="tab-inventory" class="tab-content">
       <div class="toolbar">
         <h2 id="inventory-title">📦 库存管理</h2>
-        <button class="btn btn-default" id="refresh-inventory">🔄 刷新</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-success" id="restock-all">🛒 一键补货</button>
+          <button class="btn btn-default" id="refresh-inventory">🔄 刷新</button>
+        </div>
       </div>
       <div class="card">
         <table class="data-table">
@@ -89,6 +92,7 @@
               <th>当前库存</th>
               <th>状态</th>
               <th>预警阈值</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody id="inventory-tbody"></tbody>
@@ -148,6 +152,33 @@
           <div class="metric-value" id="stat-score">0</div>
           <div class="metric-label">平均质检分</div>
         </div>
+        <div class="metric-card">
+          <div class="metric-icon">🤖</div>
+          <div class="metric-value" id="stat-calls">0</div>
+          <div class="metric-label">LLM 调用次数</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">💰</div>
+          <div class="metric-value" id="stat-tokens">0</div>
+          <div class="metric-label">Token 消耗</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span>💸 Token 消耗明细</span>
+          <span class="card-tag">按 Agent 统计</span>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>调用次数</th>
+              <th>Token 消耗</th>
+            </tr>
+          </thead>
+          <tbody id="usage-tbody"></tbody>
+        </table>
       </div>
 
       <div class="card">

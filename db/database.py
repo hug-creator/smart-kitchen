@@ -61,6 +61,16 @@ def init_db() -> None:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent TEXT NOT NULL,
+            prompt_tokens INTEGER DEFAULT 0,
+            completion_tokens INTEGER DEFAULT 0,
+            total_tokens INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     # 首次初始化时填充默认库存
     count = conn.execute("SELECT COUNT(*) FROM inventory").fetchone()[0]
     if count == 0:
@@ -111,6 +121,49 @@ def order_stats() -> dict:
     }
 
 
+def record_usage(agent: str, prompt_tokens: int = 0,
+                 completion_tokens: int = 0, total_tokens: int = 0) -> None:
+    """记录一次 LLM 调用的 Token 消耗。"""
+    conn = get_conn()
+    conn.execute(
+        """INSERT INTO usage (agent, prompt_tokens, completion_tokens, total_tokens)
+           VALUES (?, ?, ?, ?)""",
+        (agent, prompt_tokens, completion_tokens, total_tokens),
+    )
+    conn.commit()
+
+
+def get_usage_stats() -> dict:
+    """Token 消耗统计：总次数、总 Token、按 Agent 分。"""
+    conn = get_conn()
+    total_tokens = conn.execute(
+        "SELECT COALESCE(SUM(total_tokens), 0) FROM usage"
+    ).fetchone()[0]
+    total_calls = conn.execute("SELECT COUNT(*) FROM usage").fetchone()[0]
+    by_agent_rows = conn.execute(
+        "SELECT agent, COUNT(*) as calls, COALESCE(SUM(total_tokens),0) as tokens "
+        "FROM usage GROUP BY agent ORDER BY tokens DESC"
+    ).fetchall()
+    by_agent = [
+        {"agent": r["agent"], "calls": r["calls"], "tokens": r["tokens"]}
+        for r in by_agent_rows
+    ]
+    return {
+        "total_tokens": total_tokens,
+        "total_calls": total_calls,
+        "by_agent": by_agent,
+    }
+
+
+def get_last_order() -> dict | None:
+    """最近一次成功上菜的订单（用于"再来一份"上下文指代）。"""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM orders WHERE status='served' ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    return dict(row) if row else None
+
+
 def check_stock(dish: str, quantity: int = 1) -> dict:
     """检查某菜品按份数是否库存充足。
 
@@ -158,6 +211,27 @@ def restore_stock(dish: str, quantity: int = 1) -> None:
         conn.execute(
             "UPDATE inventory SET quantity = quantity + ? WHERE item = ?",
             (per_unit * quantity, item),
+        )
+    conn.commit()
+
+
+def increase_stock(item: str, amount: float) -> None:
+    """增加某个食材的库存（进货）。"""
+    conn = get_conn()
+    conn.execute(
+        "UPDATE inventory SET quantity = quantity + ? WHERE item = ?",
+        (amount, item),
+    )
+    conn.commit()
+
+
+def reset_stock() -> None:
+    """重置所有库存到初始值（一键补货）。"""
+    conn = get_conn()
+    for item, qty in INITIAL_STOCK.items():
+        conn.execute(
+            "UPDATE inventory SET quantity = ? WHERE item = ?",
+            (qty, item),
         )
     conn.commit()
 

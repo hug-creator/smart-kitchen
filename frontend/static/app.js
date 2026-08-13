@@ -7,6 +7,7 @@ const AGENT_ICONS = {
   "质检": "🔍",
   "降级": "⚠️",
   "上菜": "🍽",
+  "推荐": "💡",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -107,6 +108,22 @@ function renderResult(data) {
     statusEl.style.color = "#f56c6c";
   }
 
+  // 缺货推荐（醒目展示）
+  const timelineEl = $("timeline");
+  let recBox = $("recommendation-box");
+  if (data.recommendation) {
+    if (!recBox) {
+      recBox = document.createElement("div");
+      recBox.id = "recommendation-box";
+      recBox.className = "recommendation-box";
+      timelineEl.parentNode.insertBefore(recBox, timelineEl);
+    }
+    recBox.innerHTML = `💡 <b>推荐替代：</b>${data.recommendation}`;
+    recBox.style.display = "block";
+  } else if (recBox) {
+    recBox.style.display = "none";
+  }
+
   // 时间轴
   const timeline = $("timeline");
   timeline.innerHTML = "";
@@ -161,20 +178,20 @@ function renderResult(data) {
 // ============= 库存管理 =============
 async function refreshInventory() {
   const tbody = $("inventory-tbody");
-  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;">加载中…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;">加载中…</td></tr>';
   try {
     const resp = await fetch("/api/inventory");
     const data = await resp.json();
     renderInventory(data.items);
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="4"><div class="alert-error">${e.message}</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5"><div class="alert-error">${e.message}</div></td></tr>`;
   }
 }
 
 function renderInventory(items) {
   const tbody = $("inventory-tbody");
   if (items.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;">暂无数据</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;">暂无数据</td></tr>';
     return;
   }
   tbody.innerHTML = items.map((item) => {
@@ -193,12 +210,49 @@ function renderInventory(items) {
         <td class="${statusClass}">${item.quantity}</td>
         <td>${statusTag}</td>
         <td><span class="tag tag-gray">${item.threshold}</span></td>
+        <td><button class="btn btn-default btn-sm restock-one" data-item="${item.item}">+10 进货</button></td>
       </tr>
     `;
   }).join("");
+
+  // 绑定每行进货按钮
+  document.querySelectorAll(".restock-one").forEach((btn) => {
+    btn.addEventListener("click", () => restockItem(btn.dataset.item, 10));
+  });
+}
+
+async function restockItem(item, amount) {
+  try {
+    const resp = await fetch("/api/inventory/restock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item, amount }),
+    });
+    if (resp.ok) refreshInventory();
+  } catch (e) {
+    alert("进货失败：" + e.message);
+  }
+}
+
+async function restockAll() {
+  if (!confirm("确定重置所有食材到初始库存？")) return;
+  try {
+    const resp = await fetch("/api/inventory/restock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item: "all" }),
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      renderInventory(data.items);
+    }
+  } catch (e) {
+    alert("重置失败：" + e.message);
+  }
 }
 
 $("refresh-inventory").addEventListener("click", refreshInventory);
+$("restock-all").addEventListener("click", restockAll);
 
 // ============= 订单历史 =============
 async function refreshHistory() {
@@ -256,6 +310,25 @@ async function refreshMonitor() {
     $("stat-success").textContent = data.success;
     $("stat-rate").textContent = data.success_rate + "%";
     $("stat-score").textContent = data.avg_score;
+
+    // Token 统计
+    const usage = data.usage || {};
+    $("stat-calls").textContent = usage.total_calls ?? 0;
+    $("stat-tokens").textContent = usage.total_tokens ?? 0;
+
+    const usageTbody = $("usage-tbody");
+    const byAgent = usage.by_agent || [];
+    if (byAgent.length === 0) {
+      usageTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#909399;">暂无 LLM 调用记录</td></tr>';
+    } else {
+      usageTbody.innerHTML = byAgent.map((a) => `
+        <tr>
+          <td><strong>${a.agent}</strong></td>
+          <td>${a.calls} 次</td>
+          <td>${a.tokens} tokens</td>
+        </tr>
+      `).join("");
+    }
   } catch (e) {
     console.error(e);
   }

@@ -1,5 +1,7 @@
 # 智能餐厅多智能体系统（Smart Kitchen）
 
+[![Tests](https://github.com/hug-creator/smart-kitchen/actions/workflows/test.yml/badge.svg)](https://github.com/hug-creator/smart-kitchen/actions/workflows/test.yml)
+
 基于 LangGraph 构建的 4 智能体协作系统，实现从「客人自然语言点餐」到「菜品上桌」的完整闭环。
 
 ## ✨ 核心亮点

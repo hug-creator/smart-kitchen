@@ -117,6 +117,7 @@ def api_order():
         "cook_result": "",
         "qc_score": 0, "qc_feedback": "",
         "qc_pass": False, "qc_retries": 0, "fallback": False,
+        "recommendation": "",
         "log": [], "timestamps": {},
     })
 
@@ -147,6 +148,7 @@ def api_order():
         "quantity": result["quantity"],
         "qc_score": result["qc_score"],
         "qc_feedback": result["qc_feedback"],
+        "recommendation": result.get("recommendation", ""),
         "log": parse_log(result["log"]),
         "total_ms": sum(result["timestamps"].values()),
     })
@@ -163,6 +165,28 @@ def api_inventory():
     return jsonify({"items": items})
 
 
+@web_app.route("/api/inventory/restock", methods=["POST"])
+def api_inventory_restock():
+    """补货：item="all" 一键补货；item=具体食材 + amount 增加。"""
+    data = request.get_json() or {}
+    item = (data.get("item") or "").strip()
+    amount = float(data.get("amount", 0))
+
+    if item == "all":
+        database.reset_stock()
+    elif item and amount > 0:
+        database.increase_stock(item, amount)
+    else:
+        return jsonify({"error": "请提供 item 和 amount"}), 400
+
+    stock = database.get_all_stock()
+    items = [
+        {"item": k, "quantity": v, "threshold": 2}
+        for k, v in sorted(stock.items())
+    ]
+    return jsonify({"items": items, "ok": True})
+
+
 @web_app.route("/api/orders")
 def api_orders():
     """订单历史。"""
@@ -172,8 +196,11 @@ def api_orders():
 
 @web_app.route("/api/stats")
 def api_stats():
-    """系统统计。"""
-    return jsonify(database.order_stats())
+    """系统统计：订单统计 + Token 消耗。"""
+    stats = database.order_stats()
+    usage = database.get_usage_stats()
+    stats["usage"] = usage
+    return jsonify(stats)
 
 
 if __name__ == "__main__":

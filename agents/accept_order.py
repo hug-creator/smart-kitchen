@@ -2,14 +2,14 @@
 
 升级点（相比 Day14 教学版）：
 - 从「关键字匹配」升级为「LLM 语义理解」
-- 能理解"来碗热乎的蛋炒饭"、"刚才那个番茄炒蛋再来一份"这类自然语言
+- 支持多轮对话：识别"再来一份""刚才那个"等上下文指代，复用上一单
 - 输出结构化 JSON：{"dish": 菜品名, "quantity": 份数}
 """
 
 import json
 
-from agents.common import KitchenState, get_client, log_step, MODEL
-from db.database import list_dishes
+from agents.common import KitchenState, get_client, log_step, record_token, MODEL
+from db.database import list_dishes, get_last_order
 
 PARSE_PROMPT = """你是餐厅点餐助手。从客人的话里提取「菜品名」和「份数」。
 
@@ -22,11 +22,33 @@ PARSE_PROMPT = """你是餐厅点餐助手。从客人的话里提取「菜品�
 
 只输出 JSON，格式：{{"dish": "菜品名", "quantity": 1}}"""
 
+# 上下文指代关键词
+REFER_WORDS = ["再来一份", "再来一", "再来个", "刚才", "一样", "同上", "同样的", "再要", "还要一份", "老样子"]
+
+
+def _is_referral(user_input: str) -> bool:
+    """判断是否为"再来一份"类上下文指代。"""
+    return any(w in user_input for w in REFER_WORDS)
+
 
 def accept_order(state: KitchenState) -> KitchenState:
     import time
     t0 = time.time()
     user_input = state["user_input"].strip()
+
+    # 多轮对话：检测上下文指代，复用上一单
+    if _is_referral(user_input):
+        last = get_last_order()
+        if last:
+            state["dish"] = last["dish"]
+            state["quantity"] = last["quantity"]
+            log_step(state, "接单", f"上下文指代：复用上一单 {last['dish']} × {last['quantity']}", t0)
+            return state
+        # 没有历史订单，明确返回空
+        state["dish"] = ""
+        state["quantity"] = 0
+        log_step(state, "接单", "没找到历史订单，请直接说菜品名", t0)
+        return state
 
     client = get_client()
     dishes = "、".join(list_dishes())
@@ -40,6 +62,7 @@ def accept_order(state: KitchenState) -> KitchenState:
             ],
             temperature=0,
         )
+        record_token("接单", resp.usage)
         raw = resp.choices[0].message.content.strip()
         # 清理可能的 ```json 包裹
         raw = raw.removeprefix("```json").removesuffix("```").strip()
