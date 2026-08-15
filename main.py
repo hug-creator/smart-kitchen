@@ -4,6 +4,7 @@
 入口：python main.py  →  浏览器打开 http://127.0.0.1:5000
 """
 
+import os
 import re
 from pathlib import Path
 
@@ -90,6 +91,9 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 
 web_app = Flask(__name__, static_folder=str(FRONTEND_DIR / "static"))
 CORS(web_app)
+
+# 模块级初始化数据库（gunicorn 部署时 import main 会执行到这里）
+database.init_db()
 
 
 @web_app.route("/")
@@ -205,6 +209,7 @@ def api_stats():
 
 if __name__ == "__main__":
     database.init_db()
+    port = int(os.environ.get("PORT", 5000))
     print("🍳 智能餐厅多智能体系统启动")
-    print("📍 浏览器打开: http://127.0.0.1:5000", flush=True)
-    web_app.run(host="127.0.0.1", port=5000, debug=False)
+    print(f"📍 浏览器打开: http://127.0.0.1:{port}", flush=True)
+    web_app.run(host="0.0.0.0", port=port, debug=False)
